@@ -11,7 +11,6 @@ class ListConsumer(AbstractPuppet):
     impulse_coef: коэффициент привлечения к скидке - насколько увеличится вероятность купить продукт если увеличить скидку на 1%
     """
     def __init__(self, k_groups, k_cons_groups, k_add_groups, list_budget=1, add_budget=1, impulse_coef=0.1, impulse_base=0):
-        
         list_policy = np.zeros(k_groups)
         list_policy[np.random.choice(k_groups, k_cons_groups)] = list_budget / k_cons_groups
         self.list_policy = list_policy
@@ -36,12 +35,29 @@ class SaleConsumer(AbstractPuppet):
     limit:
     """
     def __init__(self):
+        
     
     def substep(self):
             
         
 
 class MarketEnv(AbstractEnvironment):
-    def __init__(self, k_groups, k_consumers):
-        price_policy = np.ones(k_groups)
+    def __init__(self, k_groups, consumer_list=None):
+        self.price_policy = np.ones(k_groups)
+        assert consumer_list, "No data about consumers"
+        self.c_list = consumer_list
+        
+    def reset(self):
+        self.price_policy = np.ones(k_groups)
+        
+    def step(self, action):
+        """
+        action: перечень скидок на следующий цикл - новая price_policy
+        """
+        self.price_policy = action
+        reward = 0
+        for c in self.c_list:
+            reward += c.substep(self.price_policy)
+        return reward 
+           
             
