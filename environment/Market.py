@@ -24,40 +24,55 @@ class ListConsumer(AbstractPuppet):
     def substep(self, prices):
         base_reward = (self.list_policy * prices).sum()
         remained = self.limit - base_reward
-        chance = impulce_base + impulse_coef * (1-price)
+        chance = self.impulse_base + self.impulse_coef * (1-prices)
         add_res = np.random.rand(len(self.add_policy))
-        base_reward += min(remained, ((self.add_policy * prices)[add_res > chance]).sum())
-        return base_reward
-        
-class SaleConsumer(AbstractPuppet):
-    """
-    prev_policy: перечень скидок на прошлый ход
-    limit:
-    """
-    def __init__(self):
-        
-    
-    def substep(self):
-            
+        add_reward = ((self.add_policy * prices)[add_res > chance]).sum()
+        if add_reward > remained:
+            add_reward = remained
+        return base_reward + add_reward, self.list_policy + self.add_policy * add_reward / remained
         
 
 class MarketEnv(AbstractEnvironment):
+    consts = {'low_stock': 3,
+                 'high_stock': 10,
+                 'over_stock': 2}
     def __init__(self, k_groups, consumer_list=None):
-        self.price_policy = np.ones(k_groups)
+        """
+        Рынок:
+            - k_groups групп товаров
+            - список покупателей
+        """
+        self.k_groups = k_groups
         assert consumer_list, "No data about consumers"
         self.c_list = consumer_list
+        self.stock = None
         
     def reset(self):
-        self.price_policy = np.ones(k_groups)
+        """
+        Обновить состояние среды:
+            - Восполнить склады товара на случайный stock_size
+        """
+        stock_size = np.random.randint(self.consts['low_stock'],self.consts['high_stock'])
+        self.stock = np.full(self.k_groups, stock_size)
         
     def step(self, action):
         """
-        action: перечень скидок на следующий цикл - новая price_policy
+        action: 
+            - Перечень скидок на следующий цикл
+            - Награда за успешные покупки покупателей (обратная награда за покупки сверх склада)
+            - Остановка эпизода при первом окончании продукта
         """
-        self.price_policy = action
         reward = 0
+        prices = 1 - action
+        stop_ep = False
         for c in self.c_list:
-            reward += c.substep(self.price_policy)
-        return reward 
+            reward0, sold = c.substep(prices)
+            self.stock -= sold
+            if np.all(self.stock > 0):
+                reward += reward0
+            else:
+                reward -= self.consts['over_stock'] * reward0
+                stop_ep = True
+        return reward, self.stock, stop_ep
            
             
