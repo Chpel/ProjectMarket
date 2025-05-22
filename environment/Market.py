@@ -13,9 +13,9 @@ class MarketEnv(AbstractEnvironment):
               'low_discount': 0, 'high_discount':0.5,
               'disc_step': 0.05}
     act_types = ['state', 'step', 'discount']
-    rew_types = ['reward', 'diff', 'bonus']
+    rew_types = ['reward', 'diff', 'bonus', 'plan']
 
-    def __init__(self, k_groups, k_actions=6, fix_stock=None, consumer_list=None, max_ep=None, action_type='state', reward_type='reward', base_state = 'zero'):
+    def __init__(self, k_groups, k_actions=6, fix_stock=None, consumer_list=None, max_ep=None, action_type='state', reward_type='reward', base_state = 'zero', plan_reward=None):
         """
         k_groups: кол-во групп товаров
         fix_stock: фиксированный объём рынка
@@ -50,7 +50,10 @@ class MarketEnv(AbstractEnvironment):
             return l,h,k
         elif self.action_type == 'step':
             d = self.consts['disc_step']
-            return np.array([-d, 0, d]), self.k_groups
+            if self.k_actions == 3:
+                return np.array([-d, 0, d]), self.k_groups
+            elif self.k_actions == 2:
+                return np.array([-d, d]), self.k_groups
         else:
             assert False, "Стратегия действия не известна"
     
@@ -114,7 +117,7 @@ class MarketEnv(AbstractEnvironment):
         self.stock = np.full(self.k_groups, stock_size)
         self.ep = 0
         l,h,k = self.observation_space
-        self.discount = np.round(np.random.random(k) * (h-l) + l, 1)
+        self.discount = np.full(k, np.round(np.random.random() * (h-l) + l, 1))
         self.reward, _, _ = self._reward_calc
         return self.state
     
@@ -185,6 +188,8 @@ class MarketEnv(AbstractEnvironment):
             final = reward_diff
         elif self.reward_type == 'bonus':
             final = bonus
+        elif self.reward_type == 'plan':
+            final = self.reward - self.list_policy.sum()
         return self.state, final, stop_ep or self.ep == self.max_ep, info
            
             

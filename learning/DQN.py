@@ -42,8 +42,8 @@ def optimize_model(policy_Q, target_Q, criterion, optimizer, memory, BATCH_SIZE,
     state_batch = cat(batch.state)
     action_batch = cat(batch.action).unsqueeze(-1)
     reward_batch = cat(batch.reward)
-
-    #print(state_batch[0], action_batch[0])
+    #print(state_batch.shape, action_batch.shape, reward_batch.shape)
+    #print(state_batch[0], policy_Q(state_batch[0]), action_batch[0])
     state_action_values = policy_Q(state_batch).gather(-1, action_batch).sum(1)
     next_state_values = zeros(BATCH_SIZE, device=device)
     with no_grad():
@@ -156,10 +156,10 @@ def train(env, policy_Q, target_Q, criterion, optimizer, memory, device, params,
             if ep_code != 0:
                 break
         
-        # Perform one step of the optimization (on the policy network)
-        optimize_model(policy_Q, target_Q, criterion, optimizer, memory, params['BATCH_SIZE'], params['GAMMA'], device)
-        # Soft update of the target network's weights θ′ ← τ θ + (1 −τ )θ′
-        soft_update(target_Q, policy_Q, params['TAU'])
+            # Perform one step of the optimization (on the policy network)
+            optimize_model(policy_Q, target_Q, criterion, optimizer, memory, params['BATCH_SIZE'], params['GAMMA'], device)
+            # Soft update of the target network's weights θ′ ← τ θ + (1 −τ )θ′
+            soft_update(target_Q, policy_Q, params['TAU'])
         session.push(i_episode, ep_reward, ep_train_reward)
         if (i_episode) % params['REPORT'] == 0 and i_episode > 0:
             session.plots()
